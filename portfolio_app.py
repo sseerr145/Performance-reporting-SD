@@ -88,10 +88,25 @@ class PortfolioReportingApp:
         export_btn.pack(side=tk.RIGHT, padx=(10, 0))
 
         # --- Build column order and headers ---
-        columns = []
-        col_headers = []
-        col_levels = []
-        col_widths = []
+        columns: list[str] = []
+        col_headers: list[str] = []
+        col_levels: list[str | None] = []
+        col_widths: list[int] = []
+
+        # Include original transaction columns first (uncolored)
+        main_cols = [c for c in self.processed_data.columns if get_column_level(c) is None]
+        for col in main_cols:
+            columns.append(col)
+            col_headers.append(col)
+            col_levels.append(None)
+            # give wider width for longer text fields
+            if "Security" in col or "Description" in col:
+                width = 150
+            else:
+                width = 120
+            col_widths.append(width)
+
+        # Add calculated columns grouped by level
         for group in COLUMN_GROUPS:
             for field in group["fields"]:
                 col = f"{field} ({group['section']})"
@@ -101,7 +116,13 @@ class PortfolioReportingApp:
                 # Set width based on field type
                 if "Quantity" in field:
                     width = 100
-                elif "Cost" in field or "Price" in field or "Total" in field or "Rate" in field or "Realized Gain/Loss" in field:
+                elif (
+                    "Cost" in field
+                    or "Price" in field
+                    or "Total" in field
+                    or "Rate" in field
+                    or "Realized Gain/Loss" in field
+                ):
                     width = 140
                 else:
                     width = 120
@@ -110,19 +131,16 @@ class PortfolioReportingApp:
         # --- Super-header Canvas ---
         superheader_frame = tk.Frame(main_frame, height=32)
         superheader_frame.pack(fill=tk.X, side=tk.TOP)
-        canvas = tk.Canvas(superheader_frame, height=32, bg='white', highlightthickness=0)
-        canvas.pack(fill=tk.X, expand=True)
+        self.header_canvas = tk.Canvas(superheader_frame, height=32, bg='white', highlightthickness=0)
+        self.header_canvas.pack(fill=tk.X, expand=True)
+        
+        # Add horizontal scrollbar for header (will be synchronized with tree scrollbar)
+        header_hsb = ttk.Scrollbar(superheader_frame, orient="horizontal", command=self.header_canvas.xview)
+        header_hsb.pack(fill=tk.X, side=tk.BOTTOM)
+        self.header_canvas.configure(xscrollcommand=header_hsb.set)
 
-        # Draw merged super-header cells (colored), no color in Treeview columns
-        x = 0
-        for group in COLUMN_GROUPS:
-            indices = [i for i, l in enumerate(col_levels) if l == group["section"]]
-            if not indices:
-                continue
-            x0 = sum(col_widths[:indices[0]])
-            x1 = sum(col_widths[:indices[-1]+1])
-            canvas.create_rectangle(x0, 0, x1, 32, fill=group["color"], outline='')
-            canvas.create_text((x0 + x1)//2, 16, text=group["section"], font=("Arial", 12, "bold"))
+        # Draw merged super-header cells (colored)
+        self.draw_super_headers(col_levels, col_widths)
 
         # --- Treeview ---
         tree_frame = ttk.Frame(main_frame)
@@ -150,18 +168,58 @@ class PortfolioReportingApp:
                     lambda x: f"{x:,.2f}" if pd.notna(x) and x != '' else ''
                 )
 
-        # Set up column headers and widths (no color in Treeview)
+        # Set up column headers and widths with styles
+        style = ttk.Style()
+        for level, color in LEVEL_COLORS.items():
+            style.configure(f"{level}.Treeview.Heading", background=color)
+
         for i, col in enumerate(columns):
-            self.tree.heading(col, text=col_headers[i])
+            self.tree.heading(col, text=col_headers[i],
+                             command=lambda _col=col: self.sort_column(_col, False))
             self.tree.column(col, width=col_widths[i], anchor=tk.CENTER, stretch=False)
 
-        # Insert data (no color tags)
+        # Insert data rows
         for _, row in self.display_data.iterrows():
             values = [row[col] if pd.notna(row[col]) and row[col] != '' else '' for col in columns]
             self.tree.insert('', 'end', values=values)
 
-        for col in columns:
-            self.tree.heading(col, text=col.split(' (')[0], command=lambda _col=col: self.sort_column(_col, False))
+        # Synchronize horizontal scrolling between tree and header
+        self.tree.configure(xscrollcommand=lambda *args: self.on_tree_scroll(*args))
+
+    def draw_super_headers(self, col_levels, col_widths):
+        """Draw the colored super-header sections above the columns"""
+        self.header_canvas.delete("all")  # Clear previous drawings
+        
+        # Calculate total width for canvas
+        total_width = sum(col_widths)
+        self.header_canvas.configure(scrollregion=(0, 0, total_width, 32))
+        
+        # Draw original columns group (light gray)
+        orig_indices = [i for i, l in enumerate(col_levels) if l is None]
+        if orig_indices:
+            x0 = 0
+            x1 = sum(col_widths[:orig_indices[-1]+1])
+            self.header_canvas.create_rectangle(x0, 0, x1, 32, fill="#f0f0f0", outline='')
+            self.header_canvas.create_text((x0 + x1)//2, 16, text="Transaction Data", font=("Arial", 12, "bold"))
+        
+        # Draw merged super-header cells (colored)
+        for group in COLUMN_GROUPS:
+            indices = [i for i, l in enumerate(col_levels) if l == group["section"]]
+            if not indices:
+                continue
+            x0 = sum(col_widths[:indices[0]])
+            x1 = sum(col_widths[:indices[-1]+1])
+            self.header_canvas.create_rectangle(x0, 0, x1, 32, fill=group["color"], outline='')
+            self.header_canvas.create_text((x0 + x1)//2, 16, text=group["section"], font=("Arial", 12, "bold"))
+
+    def on_tree_scroll(self, *args):
+        """Handle tree horizontal scroll and sync with header"""
+        # Update header canvas position to match tree
+        if args and len(args) > 0:
+            try:
+                self.header_canvas.xview_moveto(args[0])
+            except:
+                pass  # Ignore scroll errors
 
     def sort_column(self, col, reverse):
         l = [(self.tree.set(k, col), k) for k in self.tree.get_children('')]
