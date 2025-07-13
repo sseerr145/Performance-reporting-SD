@@ -3,22 +3,64 @@ from tkinter import ttk, filedialog, messagebox
 import pandas as pd
 from transaction_processor import TransactionProcessor
 
-# Always load the latest test data
 DATA_FILE = 'Test_transactions.xlsx'
 
-# Color codes for each consolidation level (matching your screenshot)
-LEVEL_COLORS = {
-    'Portfolio': '#cbe7fa',        # Light blue
-    'Parent company': '#f8d6ea',   # Light pink
-    'Account': '#fffde7',          # Light yellow (if needed)
-}
+# Column grouping meta data used for the super header
+COLUMN_GROUPS = [
+    {
+        "section": "Portfolio",
+        "color": "#cbe7fa",  # Light blue
+        "fields": [
+            "Transaction Cost USD",
+            "Transaction Cost CCY",
+            "Cumulative Quantity",
+            "Cumulative Cost CCY",
+            "Cumulative Cost USD",
+            "Cost per Unit USD",
+            "Cost per Unit CCY",
+            "Realized Gain/Loss CCY",
+            "Realized Gain/Loss USD",
+        ],
+    },
+    {
+        "section": "Parent company",
+        "color": "#f8d6ea",  # Light pink
+        "fields": [
+            "Transaction Cost USD",
+            "Transaction Cost CCY",
+            "Cumulative Quantity",
+            "Cumulative Cost CCY",
+            "Cumulative Cost USD",
+            "Cost per Unit USD",
+            "Cost per Unit CCY",
+            "Realized Gain/Loss CCY",
+            "Realized Gain/Loss USD",
+        ],
+    },
+    {
+        "section": "Account",
+        "color": "#fffde7",  # Light yellow (if needed)
+        "fields": [
+            "Transaction Cost USD",
+            "Transaction Cost CCY",
+            "Cumulative Quantity",
+            "Cumulative Cost CCY",
+            "Cumulative Cost USD",
+            "Cost per Unit USD",
+            "Cost per Unit CCY",
+            "Realized Gain/Loss CCY",
+            "Realized Gain/Loss USD",
+        ],
+    },
+]
 
-LEVELS = ['Portfolio', 'Parent company', 'Account']
+LEVELS = [grp["section"] for grp in COLUMN_GROUPS]
+LEVEL_COLORS = {grp["section"]: grp["color"] for grp in COLUMN_GROUPS}
 
 # Map columns to their consolidation level
-def get_column_level(col):
+def get_column_level(col: str) -> str | None:
     for level in LEVELS:
-        if f'({level})' in col:
+        if f"({level})" in col:
             return level
     return None
 
@@ -45,23 +87,27 @@ class PortfolioReportingApp:
         export_btn = ttk.Button(header_frame, text="📊 Export to Excel", command=self.export_to_excel, style="TButton")
         export_btn.pack(side=tk.RIGHT, padx=(10, 0))
 
-        # --- Super-header Canvas ---
-        columns = list(self.processed_data.columns)
-        col_levels = [get_column_level(col) for col in columns]
+        # --- Build column order and headers ---
+        columns = []
+        col_headers = []
+        col_levels = []
         col_widths = []
-        for col in columns:
-            if col in ['Portfolio', 'Parent company', 'Legal entity', 'Custodian', 'Account', 'Security', 'Currency', 'B/S', 'Trade ID']:
-                width = 120
-            elif 'date' in col.lower():
-                width = 100
-            elif 'Quantity' in col:
-                width = 100
-            elif 'Cost' in col or 'Price' in col or 'Total' in col or 'Rate' in col or 'Realized Gain/Loss' in col:
-                width = 140
-            else:
-                width = 120
-            col_widths.append(width)
+        for group in COLUMN_GROUPS:
+            for field in group["fields"]:
+                col = f"{field} ({group['section']})"
+                columns.append(col)
+                col_headers.append(field)
+                col_levels.append(group["section"])
+                # Set width based on field type
+                if "Quantity" in field:
+                    width = 100
+                elif "Cost" in field or "Price" in field or "Total" in field or "Rate" in field or "Realized Gain/Loss" in field:
+                    width = 140
+                else:
+                    width = 120
+                col_widths.append(width)
 
+        # --- Super-header Canvas ---
         superheader_frame = tk.Frame(main_frame, height=32)
         superheader_frame.pack(fill=tk.X, side=tk.TOP)
         canvas = tk.Canvas(superheader_frame, height=32, bg='white', highlightthickness=0)
@@ -69,14 +115,14 @@ class PortfolioReportingApp:
 
         # Draw merged super-header cells (colored), no color in Treeview columns
         x = 0
-        for level in LEVELS:
-            indices = [i for i, l in enumerate(col_levels) if l == level]
+        for group in COLUMN_GROUPS:
+            indices = [i for i, l in enumerate(col_levels) if l == group["section"]]
             if not indices:
                 continue
             x0 = sum(col_widths[:indices[0]])
             x1 = sum(col_widths[:indices[-1]+1])
-            canvas.create_rectangle(x0, 0, x1, 32, fill=LEVEL_COLORS[level], outline='')
-            canvas.create_text((x0 + x1)//2, 16, text=level, font=("Arial", 12, "bold"))
+            canvas.create_rectangle(x0, 0, x1, 32, fill=group["color"], outline='')
+            canvas.create_text((x0 + x1)//2, 16, text=group["section"], font=("Arial", 12, "bold"))
 
         # --- Treeview ---
         tree_frame = ttk.Frame(main_frame)
@@ -106,7 +152,7 @@ class PortfolioReportingApp:
 
         # Set up column headers and widths (no color in Treeview)
         for i, col in enumerate(columns):
-            self.tree.heading(col, text=col)
+            self.tree.heading(col, text=col_headers[i])
             self.tree.column(col, width=col_widths[i], anchor=tk.CENTER, stretch=False)
 
         # Insert data (no color tags)
@@ -115,7 +161,7 @@ class PortfolioReportingApp:
             self.tree.insert('', 'end', values=values)
 
         for col in columns:
-            self.tree.heading(col, text=col, command=lambda _col=col: self.sort_column(_col, False))
+            self.tree.heading(col, text=col.split(' (')[0], command=lambda _col=col: self.sort_column(_col, False))
 
     def sort_column(self, col, reverse):
         l = [(self.tree.set(k, col), k) for k in self.tree.get_children('')]
