@@ -181,9 +181,11 @@ class PortfolioReportingApp:
         style.configure("Treeview.Heading", background="#f5f5f5", font=("Arial", 10, "bold"))
         style.map("Treeview", background=[("selected", "#cce5ff")])
 
-        # Configure column-specific styles for better visual separation
-        for level, color in LEVEL_COLORS.items():
-            style.configure(f"{level}.Treeview", background=color)
+        # Configure enhanced Treeview styling for better visual separation
+        style.configure("Treeview", 
+                       background="white",
+                       fieldbackground="white",
+                       rowheight=25)  # Slightly taller rows for better readability
         
         # Define column tags with professional-looking muted tones
         col_bg_colors = {
@@ -193,10 +195,18 @@ class PortfolioReportingApp:
             None: "white"                 # Default
         }
 
-        # Insert data rows
-        for _, row in self.display_data.iterrows():
+        # Insert data rows with alternating row colors for better visual separation
+        for idx, (_, row) in enumerate(self.display_data.iterrows()):
             values = [row[col] if pd.notna(row[col]) and row[col] != '' else '' for col in columns]
-            self.tree.insert('', 'end', values=values)
+            item_id = self.tree.insert('', 'end', values=values)
+            
+            # Apply alternating row colors for better readability
+            if idx % 2 == 0:
+                self.tree.tag_configure(f"row_{idx}", background="#f8f9fa")
+                self.tree.item(item_id, tags=(f"row_{idx}",))
+            else:
+                self.tree.tag_configure(f"row_{idx}", background="white")
+                self.tree.item(item_id, tags=(f"row_{idx}",))
 
         # Set up horizontal scrollbar sync
         hsb.config(command=self.on_combined_scroll)
@@ -228,6 +238,10 @@ class PortfolioReportingApp:
             x1 = sum(col_widths[:indices[-1]+1])
             self.header_canvas.create_rectangle(x0, 0, x1, 32, fill=group["color"], outline='')
             self.header_canvas.create_text((x0 + x1)//2, 16, text=group["section"], font=("Arial", 12, "bold"))
+            
+            # Add subtle separator line between column groups
+            if x0 > 0:  # Don't add separator before the first group
+                self.header_canvas.create_line(x0, 0, x0, 32, fill="#cccccc", width=1)
 
     def on_combined_scroll(self, *args):
         """Scroll both the treeview and header canvas horizontally"""
