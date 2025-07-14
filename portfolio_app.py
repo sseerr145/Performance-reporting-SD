@@ -163,15 +163,10 @@ class PortfolioReportingApp:
                     lambda x: f"{x:,.2f}" if pd.notna(x) and x != '' else ''
                 )
 
-        # Set up column headers and widths with styles
-        style = ttk.Style()
-        for level, color in LEVEL_COLORS.items():
-            style.configure(f"{level}.Treeview.Heading", background=color)
-        
-        # Unify Treeview header style to better match canvas
-        style.configure("Treeview.Heading", background="#f5f5f5", font=("Arial", 10, "bold"))
-
+        # Treeview column setup with color tagging
         for i, col in enumerate(columns):
+            level = col_levels[i]
+            tag = f"{level}_col" if level else "base_col"
             self.tree.heading(col, text=col_headers[i], command=lambda _col=col: self.sort_column(_col, False))
             self.tree.column(
                 col,
@@ -180,6 +175,23 @@ class PortfolioReportingApp:
                 anchor=tk.CENTER,
                 stretch=False
             )
+
+        # Define row tags for column-level background coloring
+        style = ttk.Style()
+        style.configure("Treeview.Heading", background="#f5f5f5", font=("Arial", 10, "bold"))
+        style.map("Treeview", background=[("selected", "#cce5ff")])
+
+        # Configure column-specific styles for better visual separation
+        for level, color in LEVEL_COLORS.items():
+            style.configure(f"{level}.Treeview", background=color)
+        
+        # Define column tags with professional-looking muted tones
+        col_bg_colors = {
+            "Portfolio": "#e3f2fd",       # Soft blue
+            "Parent company": "#fce4ec",  # Soft pink
+            "Account": "#fff9c4",         # Soft yellow
+            None: "white"                 # Default
+        }
 
         # Insert data rows
         for _, row in self.display_data.iterrows():
