@@ -1,15 +1,17 @@
-# Portfolio Reporting Tool - Weighted Average Cost Basis
+# Portfolio Reporting Tool - PyQt5 Version
 
-A desktop application for processing security transactions and calculating holdings and realized P&L using the Weighted Average Cost (WAC) method with multi-level consolidation support.
+A modern desktop application for processing security transactions and calculating holdings and realized P&L using the Weighted Average Cost (WAC) method with multi-level consolidation support.
 
 ## Features
 
-- **Multi-Level Consolidation**: Supports Portfolio, Parent company, Legal entity, and Account level calculations
+- **Modern PyQt5 Interface**: Clean, professional UI with full control over table formatting
+- **Multi-Level Consolidation**: Supports All, Portfolio, Parent company, and Legal entity level calculations
 - **WAC Calculations**: Automatically calculates weighted average cost basis for buy/sell transactions
 - **Realized P&L Tracking**: Tracks realized gains/losses for sell transactions
-- **Excel Import/Export**: Load transaction data from Excel and export processed results
-- **Activity View**: Complete transaction history with calculated fields
+- **Excel Import/Export**: Load transaction data from Excel and export processed results with formatting
+- **Activity View**: Complete transaction history with calculated fields and color-coded headers
 - **Holdings Snapshot**: Current position holdings across all consolidation levels
+- **Full Table Control**: Easy header height adjustment, column formatting, and styling
 
 ## Installation
 
@@ -26,9 +28,8 @@ python portfolio_app.py
 ```
 
 2. Load your Excel transaction file using the "Load Excel File" button
-3. Click "Process Transactions" to calculate WAC and P&L
-4. View results in the Activity and Holdings tabs
-5. Export processed data to Excel using "Export to Excel"
+3. View results in the Activity and Holdings tabs
+4. Export processed data to Excel using "Export to Excel"
 
 ## Data Format
 
@@ -62,5 +63,17 @@ For each consolidation level, the tool calculates:
 ## Architecture
 
 - `transaction_processor.py`: Core WAC calculation engine
-- `portfolio_app.py`: Desktop GUI application
-- Modular design for easy extension with additional features 
+- `portfolio_app.py`: PyQt5 desktop GUI application
+- Modular design for easy extension with additional features
+
+## Advantages of PyQt5 Version
+
+- **Full Table Control**: Easy header height adjustment and column formatting
+- **Modern UI**: Professional appearance with native look and feel
+- **Better Performance**: More efficient than Tkinter for large datasets
+- **Rich Styling**: Comprehensive styling options for tables and widgets
+- **Cross-Platform**: Consistent appearance across Windows, macOS, and Linux
+
+## Sample Data
+
+The application includes sample transaction data in `Test_transactions.xlsx` for testing and demonstration purposes. 
